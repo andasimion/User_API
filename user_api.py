@@ -41,13 +41,11 @@ def get_user(guid):
 
 @app.route('/user', methods = ['POST'])
 def add_user():
-    print request.data
     user_dict = json.loads(request.data)
     user = models.User(user_dict['guid'], user_dict['first_name'], user_dict['last_name'])
     db = open_db()
     cursor = db.cursor()
     sql = "INSERT INTO users VALUES ('" + str(user.guid) + "', '" + user.first_name + "', '" + user.last_name + "')"
-    print sql
     cursor.execute(sql)
     db.commit()
     close_db(db)
@@ -62,6 +60,28 @@ def remove_user(guid):
     db.commit()
     close_db(db)
     return "ok"
+    
+@app.route('/user/<guid>', methods = ['PATCH', 'PUT'])
+def modify_user(guid):
+    user_dict = json.loads(request.data)
+    update_sql = ", ".join([str(key)+ "= '" + str(user_dict.get(key)) + "'"  for key in user_dict.keys()])
+    #column1 = value1, column2 = value2...., columnN = valueN
+    db = open_db()
+    cursor = db.cursor()
+    sql = "UPDATE users SET " + update_sql + " WHERE guid = '" + guid + "'"
+    print sql
+    cursor.execute(sql)
+    db.commit()
+    db = open_db()
+    cursor2 = db.cursor()
+    sql2 = "SELECT * FROM users WHERE guid = '" + str(guid) + "'"
+    cursor.execute(sql2)
+    row = cursor.fetchone()
+    user = models.user_from_row(row)
+    user_dict = user.json_dict()
+    json_body = json.dumps(user_dict)
+    close_db(db)
+    return Response(json_body, mimetype='application/json')
        
 if __name__ == '__main__':
     app.run(debug = True)
